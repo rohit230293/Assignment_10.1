@@ -1,0 +1,84 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Jul 20 12:24:51 2018
+
+@author: arvind
+"""
+
+import numpy as np
+import pandas as pd
+train_set = \
+pd.read_csv('http://archive.ics.uci.edu/ml/machine-learning-databases/adult/adult.data', header = None)
+
+test_set = \
+pd.read_csv('http://archive.ics.uci.edu/ml/machine-learning-databases/adult/adult.test', skiprows = 1, header = None)
+col_labels = ['age', 'workclass', 'fnlwgt', 'education', 'education_num', 'marital_status', \
+'occupation','relationship', 'race', 'sex', 'capital_gain', 'capital_loss', 'hours_per_week', \
+'native_country', 'wage_class']
+
+train_set.columns = col_labels
+test_set.columns = col_labels
+
+# Check about the data once
+print(train_set.info())
+print(test_set.info())
+
+# Found that there are no missing values, however reading the dataset we can see
+# there are many vales as " ?"
+# need to handle these missing values
+
+print('train_set shape before dropping the missing values : {}'.format(train_set.shape))
+# Dropping all missing values
+train_set = train_set.replace(' ?',np.nan).dropna()
+print('train_set shape before dropping the missing values : {}'.format(train_set.shape))
+
+print("------------------------------------------------------------")
+# Same need to be done on test data as well
+print('test_set shape before dropping the missing values : {}'.format(test_set.shape))
+# Dropping all missing values
+test_set = test_set.replace(' ?',np.nan).dropna()
+print('test_set shape before dropping the missing values : {}'.format(test_set.shape))
+print("------------------------------------------------------------")
+
+# Can see that the 'wage_class' have different vales in train_test and test_set
+print(train_set.wage_class.unique())
+print(test_set.wage_class.unique())
+
+# replacing all '<=50K.' ' >50K.' to ' <=50K' ' >50K'
+test_set = test_set.replace({' <=50K.':' <=50K' , ' >50K.':' >50K'})
+
+# Applying Label encoding and one hot encoding
+from sklearn.preprocessing import LabelEncoder
+lblenc = LabelEncoder()
+#df.apply(LabelEncoder().fit_transform)
+#train_set = lblenc(train_set.fit_tr)
+train_set_lblenc = train_set.apply(lblenc.fit_transform)
+# makeing X_train and y_train from training data set
+y_train = train_set_lblenc.wage_class
+X_train = train_set_lblenc.drop('wage_class',axis=1)
+
+# Applying Label encoding on test set
+test_set_lblenc = test_set.apply(lblenc.fit_transform)
+# makeing X_train and y_test from training data set
+y_test = test_set_lblenc.wage_class
+X_test = test_set_lblenc.drop('wage_class',axis=1)
+
+# fitting xgboost to the training data
+from xgboost import XGBClassifier
+xgc = XGBClassifier()
+xgc.fit(X_train, y_train)
+
+# Printing the accuracy score 
+print("The accuracy score calculated is {}".format(xgc.score(X_train, y_train)))
+
+# predicting the test set results
+y_pred = xgc.predict(X_test)
+
+#make the confusion matricx
+from sklearn.metrics import confusion_matrix
+cm = confusion_matrix(y_test,y_pred)
+
+#print(xgc.score(y_test,y_pred))
+from sklearn.metrics import mean_absolute_error
+print("Mean Absolute Error : " + str(mean_absolute_error(y_pred, y_test)))
